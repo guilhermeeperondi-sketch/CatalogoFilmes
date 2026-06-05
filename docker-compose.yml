@@ -1,0 +1,59 @@
+services:
+  # Backend Laravel (Com configuração automática para a pasta public)
+  backend:
+    image: php:8.2-apache
+    container_name: tmdb_backend
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./backend:/var/www/html
+    ports:
+      - "8000:80"
+    environment:
+      - APACHE_DOCUMENT_ROOT=/var/www/html/public
+    command: >
+      sh -c "sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/*.conf &&
+             sed -ri -e 's!/var/www/!/var/www/html/public!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf &&
+             a2enmod rewrite &&
+             apache2-foreground"
+    depends_on:
+      - db
+    networks:
+      - tmdb_network
+
+  # Frontend Vue.js
+  frontend:
+    image: node:20-alpine
+    container_name: tmdb_frontend
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "3000:3000"
+    command: sh -c "npm install && npm run dev -- --host"
+    networks:
+      - tmdb_network
+
+  # Banco de Dados MySQL
+  db:
+    image: mysql:8.0
+    container_name: tmdb_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: tmdb_app
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - tmdb_db_data:/var/lib/mysql
+    networks:
+      - tmdb_network
+
+networks:
+  tmdb_network:
+    driver: bridge
+
+volumes:
+  tmdb_db_data:
